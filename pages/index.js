@@ -1,118 +1,259 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-
-const inter = Inter({ subsets: ['latin'] })
+import { useState, useEffect } from "react";
+import { ethers } from "ethers";
+import Image from "next/image";
 
 export default function Home() {
-  return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+  const [provider, setProvider] = useState(null);
+  const [isCopied, setIsCopied] = useState(false);
+  const [signer, setSigner] = useState(null);
+  const [signerAddress, setSignerAddress] = useState(null);
+  const [message, setMessage] = useState("");
+  const [signature, setSignature] = useState(null);
+  const [inputSignature, setInputSignature] = useState("");
+  const [activeTab, setActiveTab] = useState("sign");
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+  // Function to check if wallet is connected
+  const checkIfWalletIsConnected = async () => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.listAccounts();
+      if (accounts.length > 0) {
+        const _signer = await provider.getSigner();
+        setSigner(_signer);
+        setSignerAddress(accounts[0].address);
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error("Failed to check if wallet is connected:", err);
+    }
+  };
+
+  // Use effect hook to check if wallet is connected on component mount
+  useEffect(() => {
+    checkIfWalletIsConnected();
+  }, []);
+
+  const connectWallet = async () => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const _signer = await provider.getSigner();
+
+      // Get the connected account
+      const connectedAccount = await _signer.getAddress();
+      setSigner(_signer);
+      setSignerAddress(connectedAccount);
+    } catch (err) {
+      console.error("Failed to connect wallet:", err);
+    }
+  };
+
+  const handleCopyClick = async () => {
+    try {
+      // Copy signature to clipboard
+      await navigator.clipboard.writeText(JSON.stringify(signature, null, 4));
+
+      // Set state to display "Copied!"
+      setIsCopied(true);
+
+      // Reset state back to image after 1 second
+      setTimeout(() => setIsCopied(false), 1000);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+    }
+  };
+
+  const MyTextArea = () => {
+    return (
+      <div className="w-full border border-gray-200 rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600 ">
+        <div className="flex items-center justify-between bg-gray-100">
+          <button
+            type="button"
+            className="p-2 text-teal-900 rounded cursor-pointer ml-auto text-sm"
+            onClick={handleCopyClick}
+          >
+            {isCopied ? (
+              "Copied!"
+            ) : (
+              <Image width="20" height="20" src="/copy.svg" alt="copy" />
+            )}
+          </button>
+          <div
+            id="tooltip-fullscreen"
+            role="tooltip"
+            className="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip dark:bg-gray-700"
+          >
+            Show full screen
+            <div className="tooltip-arrow" data-popper-arrow></div>
+          </div>
+        </div>
+
+        <textarea
+          readOnly
+          className="block resize-none p-2.5 w-full h-full text-sm text-gray-900 bg-gray-50 rounded-lg self-end focus:outline-none overflow-x-auto"
+          rows="7"
+          value={JSON.stringify(signature, null, 4)}
         />
       </div>
+    );
+  };
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+  const handleSign = async () => {
+    if (!(await checkIfWalletIsConnected())) {
+      return alert("Wallet is not connected");
+    }
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+    try {
+      const sig = await signer.signMessage(message);
+      const _signature = {
+        msg: message,
+        sig: sig,
+        address: signerAddress,
+      };
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
+      setSignature(_signature);
+    } catch (error) {
+      console.error("Error signing the message:", error);
+      alert("Error signing the message.");
+    }
+  };
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+  const handleVerify = async () => {
+    try {
+      if (!inputSignature) {
+        alert("Please enter a valid signature JSON.");
+        return;
+      }
+
+      let parsedInputSignature;
+      try {
+        parsedInputSignature = JSON.parse(inputSignature);
+        if (
+          !(
+            parsedInputSignature.msg &&
+            parsedInputSignature.address &&
+            parsedInputSignature.sig
+          )
+        ) {
+          throw new Error("Invalid JSON");
+        }
+      } catch (error) {
+        console.warn("Invalid JSON input");
+        setInputSignature(null);
+      }
+
+      const signerAddr = ethers.verifyMessage(
+        parsedInputSignature.msg,
+        parsedInputSignature.sig
+      );
+
+      if (signerAddr === parsedInputSignature.address) {
+        alert("Signature verified");
+      } else {
+        alert("Signature not verified");
+      }
+    } catch (error) {
+      console.error("Error verifying the signature:", error);
+      alert("Error verifying the signature.");
+    }
+  };
+
+  return (
+    <div className="grid w-screen min-h-screen bg-gray-800 p-10" style={{ minWidth: '450px' }}>
+      <button
+        className="h-10 mx-5 mb-5 justify-self-end bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full"
+        onClick={connectWallet}
+      >
+        {signerAddress ? "Connected" : "Connect Wallet"}
+      </button>
+      <div className="flex flex-col sm:flex-row gap-4 justify-evenly">
+        {/* Sidebar */}
+        <div className="w-96 p-10 bg-purple-100 rounded text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 px-5 py-2.5">
+          <section className="text-white p-10 rounded">
+            <h1 className="text-2xl font-bold">
+              Unlock A New Level of Security with CryptoSigner
+            </h1>
+            <p className="text-lg mt-4">
+              In today's digital world, the authenticity and integrity of
+              messages are more important than ever. CryptoSigner provides an
+              easy-to-use, platform for signing and verifying messages.
+            </p>
+          </section>
+        </div>
+        <div className="w-96 p-10 bg-gradient-to-r from-lime-200 via-lime-400 to-lime-500 rounded ">
+          <div className="flex justify-center">
+            <button
+              className={
+                activeTab === "sign"
+                  ? "inline-block border border-teal-500 rounded py-1 px-3 bg-teal-500 text-white"
+                  : "inline-block border border-white rounded hover:border-teal-100 text-teal-500 hover:bg-teal-100 py-1 px-3"
+              }
+              onClick={() => setActiveTab("sign")}
+            >
+              Sign Message
+            </button>
+            <button
+              className={
+                activeTab !== "sign"
+                  ? "inline-block border border-teal-500 rounded py-1 px-3 bg-teal-500 text-white"
+                  : "inline-block border border-white rounded hover:border-teal-100 text-teal-500 hover:bg-teal-100 py-1 px-3"
+              }
+              onClick={() => setActiveTab("verify")}
+            >
+              Verify Message
+            </button>
+          </div>
+
+          {activeTab === "sign" && (
+            <div>
+              <textarea
+                className="block resize-none my-10 p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-teal-500 focus:border-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-teal-500 dark:focus:border-teal-500"
+                rows="10"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Enter message to sign"
+              />
+              <div className="flex w-full justify-center">
+                <button
+                  className="bg-teal-700 hover:bg-teal-800 text-white font-bold py-2 px-4 border border-teal-800 rounded"
+                  onClick={handleSign}
+                >
+                  Sign
+                </button>
+              </div>
+              {signature && (
+                <div className="mt-4">
+                  <label>Signature:</label>
+                  <div>
+                    <MyTextArea />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "verify" && (
+            <div>
+              <textarea
+                className="block resize-none my-10 p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-teal-500 focus:border-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-teal-500 dark:focus:border-teal-500"
+                rows="10"
+                placeholder="Enter signature to verify"
+                value={inputSignature} // Bind value
+                onChange={(e) => setInputSignature(e.target.value)} // Update value
+              />
+              <div className="flex w-full justify-center">
+                <button
+                  className="bg-teal-700 hover:bg-teal-800 text-white font-bold py-2 px-4 border border-teal-800 rounded"
+                  onClick={handleVerify}
+                >
+                  Verify
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </main>
-  )
+    </div>
+  );
 }
